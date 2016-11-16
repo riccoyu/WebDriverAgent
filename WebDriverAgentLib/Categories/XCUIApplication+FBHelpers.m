@@ -45,7 +45,7 @@ const static NSTimeInterval FBMinimumAppSwitchWait = 3.0;
 
 - (NSDictionary *)fb_tree
 {
-  return [self.class dictionaryForElement:self.lastSnapshot];
+  return [self.class dictionaryForElement:self.lastSnapshot treeLevel:0 maxLevel:8];
 }
 
 - (NSDictionary *)fb_accessibilityTree
@@ -75,6 +75,34 @@ const static NSTimeInterval FBMinimumAppSwitchWait = 3.0;
     }
   }
   return info;
+}
+
++ (NSDictionary *)dictionaryForElement:(XCElementSnapshot *)snapshot treeLevel:(NSInteger)level maxLevel:(NSInteger)max{
+    NSMutableDictionary *info = [[NSMutableDictionary alloc] init];
+    info[@"type"] = [FBElementTypeTransformer shortStringWithElementType:snapshot.elementType];
+    info[@"rawIdentifier"] = FBValueOrNull([snapshot.identifier isEqual:@""] ? nil : snapshot.identifier);
+    info[@"name"] = FBValueOrNull(snapshot.wdName);
+    info[@"value"] = FBValueOrNull(snapshot.wdValue);
+    info[@"label"] = FBValueOrNull(snapshot.wdLabel);
+    info[@"rect"] = snapshot.wdRect;
+    info[@"frame"] = NSStringFromCGRect(snapshot.wdFrame);
+    info[@"isEnabled"] = [@([snapshot isWDEnabled]) stringValue];
+    info[@"isVisible"] = [@([snapshot isWDVisible]) stringValue];
+    
+    if (level < max) {
+        NSArray *childElements = snapshot.children;
+        if ([childElements count]) {
+            info[@"children"] = [[NSMutableArray alloc] init];
+            for (XCElementSnapshot *childSnapshot in childElements) {
+                [info[@"children"] addObject:[self dictionaryForElement:childSnapshot treeLevel:level+1 maxLevel:max]];
+            }
+        }
+        return info;
+    } else if (level == max){
+        return info;
+    } else {
+        return nil;
+    }
 }
 
 + (NSDictionary *)accessibilityInfoForElement:(XCElementSnapshot *)snapshot
